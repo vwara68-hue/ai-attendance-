@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Attendance: roll call that takes itself</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#eef3f8;--panel:#fff;--ink:#14213d;--muted:#54607a;--line:#d3dce8;--brand:#2f5bea;--on-brand:#fff;--ok:#1f9d6b;--warn:#c98a0a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1729;--panel:#18223a;--ink:#e8eefc;--muted:#9aa8c7;--line:#2a3757;--brand:#6c8cff;--on-brand:#0f1729;--ok:#3ecf94;--warn:#f0b94a}}
+:root[data-theme="dark"]{--bg:#0f1729;--panel:#18223a;--ink:#e8eefc;--muted:#9aa8c7;--line:#2a3757;--brand:#6c8cff;--on-brand:#0f1729;--ok:#3ecf94;--warn:#f0b94a}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 1.0625rem/1.6 "Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;line-height:1.08;margin:0;letter-spacing:-.02em}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 1.25rem}
+header .wrap{display:flex;justify-content:space-between;align-items:center;padding-top:1.25rem;padding-bottom:1.25rem}
+.logo{font:800 1.2rem "Bricolage Grotesque",system-ui,sans-serif;text-decoration:none}
+nav a{margin-left:1.25rem;text-decoration:none;color:var(--muted);font-weight:500}
+nav a:hover{color:var(--ink)}
+.hero{display:grid;gap:2.5rem;padding:2.5rem 0 4rem;align-items:center}
+@media(min-width:860px){.hero{grid-template-columns:1.05fr 1fr}}
+.hero h1{font-size:clamp(2.4rem,6.5vw,4.2rem);font-weight:800}
+.hero p.lead{font-size:1.2rem;color:var(--muted);max-width:34rem;margin:1.25rem 0 2rem}
+.btn{display:inline-block;padding:.85rem 1.4rem;border-radius:10px;font-weight:600;text-decoration:none;background:var(--brand);color:var(--on-brand)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);margin-left:.5rem}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(20,33,61,.12)}
+.sheet-h{display:flex;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--line);font-weight:600}
+.sheet-h span:last-child{color:var(--muted);font-weight:500}
+.row{display:flex;align-items:center;gap:.9rem;padding:.8rem 1.25rem;border-bottom:1px solid var(--line)}
+.row:last-of-type{border-bottom:0}
+.av{width:34px;height:34px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:.8rem;font-weight:600;flex:none}
+.nm{flex:1;font-weight:500}
+.st{font-size:.9rem;font-weight:600;color:var(--muted);min-width:5.5rem;text-align:right}
+.row.in .st{color:var(--ok)}
+.row.in .av{box-shadow:0 0 0 3px var(--ok)}
+.row.late .st{color:var(--warn)}
+.row.late .av{box-shadow:0 0 0 3px var(--warn)}
+.sheet-f{padding:.9rem 1.25rem;background:var(--bg);font-size:.95rem;color:var(--muted)}
+section{padding:4rem 0;border-top:1px solid var(--line)}
+section h2{font-size:clamp(1.8rem,4vw,2.6rem);margin-bottom:2rem;max-width:30rem}
+.steps{list-style:none;padding:0;margin:0;display:grid;gap:1.5rem;counter-reset:s}
+@media(min-width:760px){.steps{grid-template-columns:repeat(3,1fr)}}
+.steps li{counter-increment:s;padding-top:1rem;border-top:3px solid var(--brand)}
+.steps li::before{content:"Step " counter(s);display:block;color:var(--brand);font-weight:600;margin-bottom:.4rem}
+.steps h3{font-size:1.35rem;margin-bottom:.4rem}
+.steps p,.feat p{margin:0;color:var(--muted)}
+.feats{display:grid;gap:2rem 3rem}
+@media(min-width:760px){.feats{grid-template-columns:1fr 1fr}}
+.feat h3{font-size:1.25rem;margin-bottom:.35rem}
+.priv{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.75rem}
+.priv h2{margin-bottom:.75rem}
+.priv p{max-width:44rem;color:var(--muted);margin:0}
+.cta{text-align:center}
+.cta h2{margin:0 auto 1.5rem}
+footer{padding:2rem 0 3rem;color:var(--muted);font-size:.95rem;border-top:1px solid var(--line)}
+@media(prefers-reduced-motion:no-preference){.row.pend .st{animation:pulse 1.4s ease-in-out infinite}@keyframes pulse{50%{opacity:.4}}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="logo" href="#top">AI Attendance</a><nav><a href="#how">How it works</a><a href="#why">Why</a><a href="#privacy">Privacy</a></nav></div></header>
+<main id="top">
+<div class="wrap">
+<div class="hero">
+<div>
+<h1>Attendance that takes itself.</h1>
+<p class="lead">Stop calling names and passing sheets around. AI marks who is present as people arrive, and hands you a clean record.</p>
+<a class="btn" href="#cta">Request a demo</a><a class="btn ghost" href="#how">See how it works</a>
+</div>
+<div class="sheet" aria-label="Example live attendance sheet">
+<div class="sheet-h"><span>Class 4B, 9:00 am</span><span id="count">0 of 5 present</span></div>
+<div class="row pend" data-s="in"><span class="av">AM</span><span class="nm">Aisha Malik</span><span class="st">Waiting</span></div>
+<div class="row pend" data-s="in"><span class="av">DO</span><span class="nm">Daniel Okoye</span><span class="st">Waiting</span></div>
+<div class="row pend" data-s="in"><span class="av">LC</span><span class="nm">Lena Costa</span><span class="st">Waiting</span></div>
+<div class="row pend" data-s="late"><span class="av">RS</span><span class="nm">Ravi Sharma</span><span class="st">Waiting</span></div>
+<div class="row pend" data-s="in"><span class="av">YT</span><span class="nm">Yuki Tanaka</span><span class="st">Waiting</span></div>
+<div class="sheet-f">Sample data. Names update as each person is recognized.</div>
+</div>
+</div>
+</div>
+
+<section id="how"><div class="wrap">
+<h2>Three steps, no roll call</h2>
+<ol class="steps">
+<li><h3>Capture</h3><p>A camera or scanner at the door sees each person as they arrive.</p></li>
+<li><h3>Recognize</h3><p>The AI matches them to your enrolled list and marks them present or late.</p></li>
+<li><h3>Review</h3><p>Check the live sheet, fix any mistake in one tap, and export the record.</p></li>
+</ol>
+</div></section>
+
+<section id="why"><div class="wrap">
+<h2>Time back for the people who matter</h2>
+<div class="feats">
+<div class="feat"><h3>Saves minutes every session</h3><p>Nobody spends the start of a lesson or meeting on names.</p></div>
+<div class="feat"><h3>Fewer errors, no proxy check-ins</h3><p>Matching a person to a record is harder to fake than signing a sheet.</p></div>
+<div class="feat"><h3>Live and searchable</h3><p>See who is in right now, or look up any past date or person.</p></div>
+<div class="feat"><h3>Reports ready to share</h3><p>Export daily, weekly, or per-person summaries when you need them.</p></div>
+</div>
+</div></section>
+
+<section id="privacy"><div class="wrap">
+<div class="priv">
+<h2>Built with consent and privacy</h2>
+<p>People are enrolled only with their permission. Data is used for attendance and nothing else, access is limited to authorized staff, and anyone can ask to have their data removed.</p>
+</div>
+</div></section>
+
+<section id="cta" class="cta"><div class="wrap">
+<h2>See it run on your own attendance list</h2>
+<a class="btn" href="mailto:hello@example.com">Request a demo</a>
+</div></section>
+</main>
+<footer><div class="wrap">AI Attendance. A team project.</div></footer>
+<script>
+(function(){
+var rows=[].slice.call(document.querySelectorAll('.row.pend')),n=0,c=document.getElementById('count');
+var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function mark(r){var s=r.getAttribute('data-s');r.classList.remove('pend');r.classList.add(s);r.querySelector('.st').textContent=s==='late'?'Late, 9:07':'Present';n++;c.textContent=n+' of '+rows.length+' present'}
+if(reduce){rows.forEach(mark);return}
+rows.forEach(function(r,i){setTimeout(function(){mark(r)},900+i*850)});
+})();
+</script>
+</body>
+</html>
